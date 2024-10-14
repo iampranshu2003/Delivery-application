@@ -9,6 +9,7 @@ import androidx.lifecycle.MutableLiveData
 import com.example.myapplication.Constants
 import com.example.myapplication.Utils
 import com.example.myapplication.api.ApiUtilities
+import com.example.myapplication.models.Orders
 import com.example.myapplication.models.Product
 import com.example.myapplication.models.Users
 import com.example.myapplication.roomdb.CartProductDao
@@ -26,11 +27,14 @@ import kotlinx.coroutines.flow.callbackFlow
 class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     //initialization
-    val sharedPreferences: SharedPreferences = application.getSharedPreferences("MyPref", MODE_PRIVATE)
-    val cartProductDao: CartProductDao = CartProductsDatabase.getDatabaseInstance(application).cartProductsDao()
+    val sharedPreferences: SharedPreferences =
+        application.getSharedPreferences("MyPref", MODE_PRIVATE)
+    val cartProductDao: CartProductDao =
+        CartProductsDatabase.getDatabaseInstance(application).cartProductsDao()
 
     private val _paymentStatus = MutableStateFlow<Boolean>(false)
     val paymentStatus = _paymentStatus
+
     //room database
     suspend fun insertCartProduct(products: CartProductTable) {
         cartProductDao.insertCartProduct(products)
@@ -50,7 +54,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
 
 
     //firebase
-    fun fetchAllProducts(): Flow<List<Product>> = callbackFlow{
+    fun fetchAllProducts(): Flow<List<Product>> = callbackFlow {
         val db = FirebaseDatabase.getInstance().getReference("Admins").child("AllProducts")
 
         val eventListener = object : ValueEventListener {
@@ -59,7 +63,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
                 for (product in snapshot.children) {
                     val prod = product.getValue(Product::class.java)
                     products.add(prod!!)
-
 
 
                 }
@@ -74,19 +77,20 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         }
         db.addValueEventListener(eventListener)
 
-        awaitClose{
+        awaitClose {
             db.removeEventListener(eventListener)
         }
     }
-    fun getCategoryProducts(category: String?) : Flow<List<Product>> = callbackFlow{
-        val db = FirebaseDatabase.getInstance().getReference("Admins").child("ProductCategory/${category}")
+
+    fun getCategoryProducts(category: String?): Flow<List<Product>> = callbackFlow {
+        val db = FirebaseDatabase.getInstance().getReference("Admins")
+            .child("ProductCategory/${category}")
         val eventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val products = ArrayList<Product>()
                 for (product in snapshot.children) {
                     val prod = product.getValue(Product::class.java)
                     products.add(prod!!)
-
 
 
                 }
@@ -101,33 +105,68 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         }
         db.addValueEventListener(eventListener)
 
-        awaitClose{
+        awaitClose {
             db.removeEventListener(eventListener)
         }
 
     }
 
-    fun updateItemCount(product : Product, itemCount: Int){
-        FirebaseDatabase.getInstance().getReference("Admins").child("AllProducts/${product.productRandomID}").child("itemCount").setValue(itemCount)
-        FirebaseDatabase.getInstance().getReference("Admins").child("ProductCategory/${product.productCategory}/${product.productRandomID}").child("itemCount").setValue(itemCount)
-        FirebaseDatabase.getInstance().getReference("Admins").child("ProductType/${product.productType}/${product.productRandomID}").child("itemCount").setValue(itemCount)
+    fun updateItemCount(product: Product, itemCount: Int) {
+        FirebaseDatabase.getInstance().getReference("Admins")
+            .child("AllProducts/${product.productRandomID}").child("itemCount").setValue(itemCount)
+        FirebaseDatabase.getInstance().getReference("Admins")
+            .child("ProductCategory/${product.productCategory}/${product.productRandomID}")
+            .child("itemCount").setValue(itemCount)
+        FirebaseDatabase.getInstance().getReference("Admins")
+            .child("ProductType/${product.productType}/${product.productRandomID}")
+            .child("itemCount").setValue(itemCount)
     }
 
-    fun saveUserAddress(address: String){
-        FirebaseDatabase.getInstance().getReference("AllUsers").child("Users").child(Utils.getCurrentUserId()).child("userAddress").setValue(address)
+    fun saveUserAddress(address: String) {
+        FirebaseDatabase.getInstance().getReference("AllUsers").child("Users")
+            .child(Utils.getCurrentUserId()).child("userAddress").setValue(address)
 
     }
+
+    fun getUserAddress(callback: (String?) -> Unit) {
+        val db = FirebaseDatabase.getInstance().getReference("AllUsers").child("Users")
+            .child(Utils.getCurrentUserId()).child("userAddress")
+        db.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val address = snapshot.getValue(String::class.java)
+                    callback(address)
+                } else {
+                    callback(null)
+                }
+
+            }
+
+
+            override fun onCancelled(error: DatabaseError) {
+                callback(null)
+            }
+
+        })
+    }
+
+    fun saveOrderedProducts(orders: Orders) {
+        FirebaseDatabase.getInstance().getReference("Admins").child("Orders").child(orders.orderId!!).setValue(orders)
+
+    }
+
     //shared preferences
-    fun savingCartItemCount(itemCount: Int){
+    fun savingCartItemCount(itemCount: Int) {
         sharedPreferences.edit().putInt("itemCount", itemCount).apply()
     }
+
     fun fetchTotolCartItemCount(): MutableLiveData<Int> {
         val totalItemCount = MutableLiveData<Int>()
         totalItemCount.value = sharedPreferences.getInt("itemCount", 0)
         return totalItemCount
     }
 
-    fun saveAddressStatus(){
+    fun saveAddressStatus() {
         sharedPreferences.edit().putBoolean("addressStatus", true).apply()
     }
 
@@ -140,8 +179,13 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     // retrofit
 
-    suspend fun checkPayment(headers: Map<String, String>){
-        val res = ApiUtilities.statusAPI.checkStatus(headers, Constants.MERCHANTID, Constants.merchantTransactionId)
+    suspend fun checkPayment(headers: Map<String, String>) {
+        val res = ApiUtilities.statusAPI.checkStatus(
+            headers,
+            Constants.MERCHANTID,
+            Constants.merchantTransactionId
+        )
         _paymentStatus.value = res.body() != null && res.body()!!.success
     }
+
 }

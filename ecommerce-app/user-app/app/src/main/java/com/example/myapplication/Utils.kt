@@ -7,6 +7,8 @@ import android.view.LayoutInflater
 import android.widget.Toast
 import com.example.myapplication.databinding.ProgressDialogBinding
 import com.google.firebase.auth.FirebaseAuth
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 object Utils {
     private var dialog: AlertDialog? = null
@@ -38,6 +40,14 @@ object Utils {
     }
     fun getCurrentUserId() :String{
         return getAuthInstance().currentUser?.uid ?: ""
+    }
+    fun getRandomId(): String{
+        return (1 .. 25).map { (('A'..'Z')+('a'..'z')+(0..9)).random() }.joinToString("")
+    }
+    fun getCurrentDate(): String?{
+        val currentDate = LocalDate.now()
+        val formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+        return currentDate.format(formatter)
     }
 
 
