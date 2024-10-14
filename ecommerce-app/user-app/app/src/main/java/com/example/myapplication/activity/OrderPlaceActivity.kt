@@ -18,7 +18,6 @@ import com.example.myapplication.databinding.AddressLayoutBinding
 import com.example.myapplication.viewmodels.UserViewModel
 import com.phonepe.intent.sdk.api.PhonePe
 import com.phonepe.intent.sdk.api.models.PhonePeEnvironment
-import com.razorpay.Checkout
 import kotlinx.coroutines.launch
 
 class OrderPlaceActivity : AppCompatActivity() {
